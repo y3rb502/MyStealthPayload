@@ -86,18 +86,14 @@ jobs:
 
           REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
 
-          if [ ! -f "$REAL_DYLIB" ]; then
-            echo "Expected path not found, searching for real dylib..."
-            REAL_DYLIB=$(find project/.theos -type f -name "MyStealthPayload.dylib" ! -path "*.dSYM*" -print | head -n 1)
-          fi
+          echo "Using:"
+          echo "$REAL_DYLIB"
 
-          if [ -z "$REAL_DYLIB" ] || [ ! -f "$REAL_DYLIB" ]; then
-            echo "ERROR: Real MyStealthPayload.dylib not found"
+          if [ ! -f "$REAL_DYLIB" ]; then
+            echo "ERROR: Real dylib not found at expected path"
             exit 1
           fi
 
-          echo "Selected:"
-          echo "$REAL_DYLIB"
           file "$REAL_DYLIB"
 
           file "$REAL_DYLIB" | grep -q "dynamically linked shared library" || {
@@ -105,10 +101,13 @@ jobs:
             exit 1
           }
 
+          rm -f ./MyStealthPayload.dylib
           cp "$REAL_DYLIB" ./MyStealthPayload.dylib
 
-          echo "Copied final dylib:"
+          echo "Final copied dylib:"
           file ./MyStealthPayload.dylib
+
+          exit 0
 
       - name: Strict Verification
         run: |
