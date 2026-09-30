@@ -111,6 +111,19 @@ jobs:
 
       - name: Strict Verification
         run: |
+          echo "Force copying real dylib before verification..."
+
+          REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
+
+          if [ ! -f "$REAL_DYLIB" ]; then
+            echo "ERROR: Real dylib not found at $REAL_DYLIB"
+            find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
+            exit 1
+          fi
+
+          rm -f ./MyStealthPayload.dylib
+          cp "$REAL_DYLIB" ./MyStealthPayload.dylib
+
           echo "=== FILE CHECK ==="
           file MyStealthPayload.dylib
 
