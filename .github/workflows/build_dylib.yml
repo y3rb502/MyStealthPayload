@@ -18,7 +18,11 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git ~/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
           echo "$HOME/theos/bin" >> $GITHUB_PATH
-
+          
+      - name: Install ldid
+        run: |
+          brew install ldid
+          
       - name: Prepare Theos Project
         run: |
           mkdir -p project
