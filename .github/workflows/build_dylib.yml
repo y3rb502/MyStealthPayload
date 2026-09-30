@@ -1,0 +1,128 @@
+name: Build MyStealthPayload Dylib
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git ~/theos
+          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+          echo "$HOME/theos/bin" >> $GITHUB_PATH
+
+      - name: Prepare Theos Project
+        run: |
+          mkdir -p project
+
+          if [ -f "MyStealthPayload.m" ]; then
+            echo "%config(generator=internal);" > project/MyStealthPayload.x
+            cat MyStealthPayload.m >> project/MyStealthPayload.x
+          elif [ -f "MyStealthPayload.x" ]; then
+            echo "%config(generator=internal);" > project/MyStealthPayload.x
+            cat MyStealthPayload.x >> project/MyStealthPayload.x
+          else
+            echo "ERROR: MyStealthPayload.m or MyStealthPayload.x not found"
+            exit 1
+          fi
+
+          cat > project/Makefile <<'EOF'
+          TARGET := iphone:clang:latest:13.0
+          ARCHS := arm64
+
+          include $(THEOS)/makefiles/common.mk
+
+          TWEAK_NAME = MyStealthPayload
+
+          MyStealthPayload_FILES = MyStealthPayload.x
+          MyStealthPayload_FRAMEWORKS = Foundation UIKit Photos Contacts
+          MyStealthPayload_CFLAGS = -fobjc-arc
+          MyStealthPayload_LOGOS_DEFAULT_GENERATOR = internal
+
+          include $(THEOS_MAKE_PATH)/tweak.mk
+          EOF
+
+          cat > project/control <<'EOF'
+          Package: com.msh.stealthpayload
+          Name: MyStealthPayload
+          Architecture: iphoneos-arm
+          Maintainer: MSH
+          Author: MSH
+          Version: 1.0.0
+          Section: Tweaks
+          EOF
+
+      - name: Build Dylib
+        run: |
+          cd project
+          make package FINALPACKAGE=1
+
+      - name: Locate Dylib
+        run: |
+          FOUND_DYLIB=$(find project/.theos -name "MyStealthPayload.dylib" | head -n 1)
+
+          if [ -z "$FOUND_DYLIB" ]; then
+            echo "ERROR: MyStealthPayload.dylib not found"
+            exit 1
+          fi
+
+          echo "Found dylib at: $FOUND_DYLIB"
+          cp "$FOUND_DYLIB" ./MyStealthPayload.dylib
+
+      - name: Strict Verification
+        run: |
+          echo "=== FILE CHECK ==="
+          file MyStealthPayload.dylib
+
+          file MyStealthPayload.dylib | grep -q "Mach-O 64-bit dynamically linked shared library arm64" || {
+            echo "ERROR: Output is not a real arm64 dylib"
+            exit 1
+          }
+
+          echo "=== MACH-O HEADER ==="
+          otool -hv MyStealthPayload.dylib
+
+          otool -hv MyStealthPayload.dylib | grep -q "DYLIB" || {
+            echo "ERROR: Mach-O type is not DYLIB"
+            exit 1
+          }
+
+          echo "=== LINKED LIBRARIES ==="
+          otool -L MyStealthPayload.dylib
+
+          if otool -L MyStealthPayload.dylib | grep -Ei "CydiaSubstrate|substrate|libhooker|ElleKit"; then
+            echo "ERROR: Unexpected jailbreak dependency found"
+            exit 1
+          fi
+
+          echo "=== LC_ID_DYLIB ==="
+          otool -l MyStealthPayload.dylib | grep -A5 LC_ID_DYLIB || {
+            echo "ERROR: Missing LC_ID_DYLIB"
+            exit 1
+          }
+
+          echo "=== AD-HOC CODESIGN ==="
+          codesign --force --sign - --timestamp=none MyStealthPayload.dylib
+
+          echo "=== LC_CODE_SIGNATURE ==="
+          otool -l MyStealthPayload.dylib | grep -A5 LC_CODE_SIGNATURE || {
+            echo "ERROR: Missing LC_CODE_SIGNATURE"
+            exit 1
+          }
+
+          echo "=== CODESIGN INFO ==="
+          codesign -dv --verbose=4 MyStealthPayload.dylib
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyStealthPayload
+          path: MyStealthPayload.dylib
