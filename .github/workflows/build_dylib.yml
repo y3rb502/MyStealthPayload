@@ -18,11 +18,11 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git ~/theos
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
           echo "$HOME/theos/bin" >> $GITHUB_PATH
-          
+
       - name: Install ldid
         run: |
           brew install ldid
-          
+
       - name: Prepare Theos Project
         run: |
           mkdir -p project
@@ -63,7 +63,7 @@ jobs:
           Version: 1.0.0
           Section: Tweaks
           EOF
-          
+
           cat > project/MyStealthPayload.plist <<'EOF'
           {
             Filter = {
@@ -73,7 +73,7 @@ jobs:
             };
           }
           EOF
-          
+
       - name: Build Dylib
         run: |
           cd project
@@ -82,14 +82,11 @@ jobs:
       - name: Locate Dylib
         run: |
           echo "All MyStealthPayload.dylib candidates:"
-          find project/.theos -type f -name "MyStealthPayload.dylib" -print
+          find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
 
           REAL_DYLIB=""
 
           while IFS= read -r f; do
-            echo "Checking: $f"
-            file "$f"
-
             if file "$f" | grep -q "dynamically linked shared library"; then
               REAL_DYLIB="$f"
               break
@@ -98,8 +95,6 @@ jobs:
 
           if [ -z "$REAL_DYLIB" ]; then
             echo "ERROR: No real dynamically linked dylib found."
-            echo "Candidates were:"
-            find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
             exit 1
           fi
 
@@ -110,17 +105,6 @@ jobs:
 
           echo "Copied dylib info:"
           file ./MyStealthPayload.dylib
-          
-      
-          FOUND_DYLIB=$(find project/.theos -name "MyStealthPayload.dylib" | head -n 1)
-
-          if [ -z "$FOUND_DYLIB" ]; then
-            echo "ERROR: MyStealthPayload.dylib not found"
-            exit 1
-          fi
-
-          echo "Found dylib at: $FOUND_DYLIB"
-          cp "$FOUND_DYLIB" ./MyStealthPayload.dylib
 
       - name: Strict Verification
         run: |
