@@ -79,23 +79,26 @@ jobs:
           cd project
           make package FINALPACKAGE=1
 
-            - name: Locate Dylib
+      - name: Locate Dylib
         run: |
-          echo "All dylib candidates:"
+          echo "Listing built files:"
           find project/.theos -type f -name "MyStealthPayload.dylib" -print
 
-          FOUND_DYLIB=$(find project/.theos -type f -name "MyStealthPayload.dylib" ! -path "*.dSYM*" | head -n 1)
+          REAL_DYLIB="project/.theos/_/Library/MobileSubstrate/DynamicLibraries/MyStealthPayload.dylib"
 
-          if [ -z "$FOUND_DYLIB" ]; then
-            echo "ERROR: Real MyStealthPayload.dylib not found"
+          if [ ! -f "$REAL_DYLIB" ]; then
+            echo "ERROR: Expected real dylib not found at:"
+            echo "$REAL_DYLIB"
+            echo "Available candidates:"
+            find project/.theos -type f -name "MyStealthPayload.dylib" -print
             exit 1
           fi
 
-          echo "Found real dylib at: $FOUND_DYLIB"
-          cp "$FOUND_DYLIB" ./MyStealthPayload.dylib
+          cp "$REAL_DYLIB" ./MyStealthPayload.dylib
 
-          echo "Copied dylib info:"
+          echo "Copied real dylib:"
           file ./MyStealthPayload.dylib
+          
         run: |
           FOUND_DYLIB=$(find project/.theos -name "MyStealthPayload.dylib" | head -n 1)
 
