@@ -63,7 +63,17 @@ jobs:
           Version: 1.0.0
           Section: Tweaks
           EOF
-
+          
+          cat > project/MyStealthPayload.plist <<'EOF'
+          {
+            Filter = {
+              Bundles = (
+                "com.burbn.instagram"
+              );
+            };
+          }
+          EOF
+          
       - name: Build Dylib
         run: |
           cd project
