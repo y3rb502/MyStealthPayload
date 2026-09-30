@@ -79,31 +79,35 @@ jobs:
           cd project
           make package FINALPACKAGE=1
 
-      - name: Locate Dylib
+      - name: Locate Real Dylib
         run: |
-          echo "All MyStealthPayload.dylib candidates:"
+          echo "All candidates:"
           find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
 
-          REAL_DYLIB=""
+          REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
 
-          while IFS= read -r f; do
-            if file "$f" | grep -q "dynamically linked shared library"; then
-              REAL_DYLIB="$f"
-              break
-            fi
-          done < <(find project/.theos -type f -name "MyStealthPayload.dylib" -print)
+          if [ ! -f "$REAL_DYLIB" ]; then
+            echo "Expected path not found, searching for real dylib..."
+            REAL_DYLIB=$(find project/.theos -type f -name "MyStealthPayload.dylib" ! -path "*.dSYM*" -print | head -n 1)
+          fi
 
-          if [ -z "$REAL_DYLIB" ]; then
-            echo "ERROR: No real dynamically linked dylib found."
+          if [ -z "$REAL_DYLIB" ] || [ ! -f "$REAL_DYLIB" ]; then
+            echo "ERROR: Real MyStealthPayload.dylib not found"
             exit 1
           fi
 
-          echo "Selected real dylib:"
+          echo "Selected:"
           echo "$REAL_DYLIB"
+          file "$REAL_DYLIB"
+
+          file "$REAL_DYLIB" | grep -q "dynamically linked shared library" || {
+            echo "ERROR: Selected file is not a real dylib"
+            exit 1
+          }
 
           cp "$REAL_DYLIB" ./MyStealthPayload.dylib
 
-          echo "Copied dylib info:"
+          echo "Copied final dylib:"
           file ./MyStealthPayload.dylib
 
       - name: Strict Verification
