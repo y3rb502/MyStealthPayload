@@ -81,22 +81,34 @@ jobs:
 
       - name: Locate Dylib
         run: |
-          echo "Listing built files:"
+          echo "All MyStealthPayload.dylib candidates:"
           find project/.theos -type f -name "MyStealthPayload.dylib" -print
 
-          REAL_DYLIB="project/.theos/_/Library/MobileSubstrate/DynamicLibraries/MyStealthPayload.dylib"
+          REAL_DYLIB=""
 
-          if [ ! -f "$REAL_DYLIB" ]; then
-            echo "ERROR: Expected real dylib not found at:"
-            echo "$REAL_DYLIB"
-            echo "Available candidates:"
-            find project/.theos -type f -name "MyStealthPayload.dylib" -print
+          while IFS= read -r f; do
+            echo "Checking: $f"
+            file "$f"
+
+            if file "$f" | grep -q "dynamically linked shared library"; then
+              REAL_DYLIB="$f"
+              break
+            fi
+          done < <(find project/.theos -type f -name "MyStealthPayload.dylib" -print)
+
+          if [ -z "$REAL_DYLIB" ]; then
+            echo "ERROR: No real dynamically linked dylib found."
+            echo "Candidates were:"
+            find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
             exit 1
           fi
 
+          echo "Selected real dylib:"
+          echo "$REAL_DYLIB"
+
           cp "$REAL_DYLIB" ./MyStealthPayload.dylib
 
-          echo "Copied real dylib:"
+          echo "Copied dylib info:"
           file ./MyStealthPayload.dylib
           
         run: |
