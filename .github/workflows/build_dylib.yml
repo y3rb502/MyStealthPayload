@@ -111,7 +111,7 @@ jobs:
           echo "Copied dylib info:"
           file ./MyStealthPayload.dylib
           
-        run: |
+      
           FOUND_DYLIB=$(find project/.theos -name "MyStealthPayload.dylib" | head -n 1)
 
           if [ -z "$FOUND_DYLIB" ]; then
