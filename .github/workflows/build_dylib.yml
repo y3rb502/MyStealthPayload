@@ -86,7 +86,7 @@ jobs:
 
           REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
 
-          echo "Using:"
+          echo "Using expected real dylib:"
           echo "$REAL_DYLIB"
 
           if [ ! -f "$REAL_DYLIB" ]; then
@@ -106,8 +106,6 @@ jobs:
 
           echo "Final copied dylib:"
           file ./MyStealthPayload.dylib
-
-          exit 0
 
       - name: Strict Verification
         run: |
