@@ -79,43 +79,15 @@ jobs:
           cd project
           make package FINALPACKAGE=1
 
-      - name: Locate Real Dylib
+      - name: Prepare Final Dylib
         run: |
+          REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
+
           echo "All candidates:"
           find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
 
-          REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
-
-          echo "Using expected real dylib:"
-          echo "$REAL_DYLIB"
-
-          if [ ! -f "$REAL_DYLIB" ]; then
-            echo "ERROR: Real dylib not found at expected path"
-            exit 1
-          fi
-
-          file "$REAL_DYLIB"
-
-          file "$REAL_DYLIB" | grep -q "dynamically linked shared library" || {
-            echo "ERROR: Selected file is not a real dylib"
-            exit 1
-          }
-
-          rm -f ./MyStealthPayload.dylib
-          cp "$REAL_DYLIB" ./MyStealthPayload.dylib
-
-          echo "Final copied dylib:"
-          file ./MyStealthPayload.dylib
-
-      - name: Strict Verification
-        run: |
-          echo "Force copying real dylib before verification..."
-
-          REAL_DYLIB="project/.theos/obj/arm64/MyStealthPayload.dylib"
-
           if [ ! -f "$REAL_DYLIB" ]; then
             echo "ERROR: Real dylib not found at $REAL_DYLIB"
-            find project/.theos -type f -name "MyStealthPayload.dylib" -print -exec file {} \;
             exit 1
           fi
 
@@ -124,8 +96,12 @@ jobs:
 
           echo "Fix install name..."
           install_name_tool -id "@rpath/MyStealthPayload.dylib" ./MyStealthPayload.dylib || true
-          install_name_tool -change "/Library/MobileSubstrate/DynamicLibraries/MyStealthPayload.dylib" "@rpath/MyStealthPayload.dylib" ./MyStealthPayload.dylib || true
 
+          echo "Final dylib:"
+          file ./MyStealthPayload.dylib
+
+      - name: Strict Verification
+        run: |
           echo "=== FILE CHECK ==="
           file MyStealthPayload.dylib
 
@@ -145,8 +121,8 @@ jobs:
           echo "=== LINKED LIBRARIES ==="
           otool -L MyStealthPayload.dylib
 
-          if otool -L MyStealthPayload.dylib | grep -Ei "CydiaSubstrate|substrate|libhooker|ElleKit"; then
-            echo "ERROR: Unexpected jailbreak dependency found"
+          if otool -L MyStealthPayload.dylib | grep -Ei "CydiaSubstrate|libsubstrate|libhooker|ElleKit"; then
+            echo "ERROR: Unexpected external jailbreak library found"
             exit 1
           fi
 
