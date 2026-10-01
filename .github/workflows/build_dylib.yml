@@ -122,6 +122,10 @@ jobs:
           rm -f ./MyStealthPayload.dylib
           cp "$REAL_DYLIB" ./MyStealthPayload.dylib
 
+          echo "Fix install name..."
+          install_name_tool -id "@rpath/MyStealthPayload.dylib" ./MyStealthPayload.dylib || true
+          install_name_tool -change "/Library/MobileSubstrate/DynamicLibraries/MyStealthPayload.dylib" "@rpath/MyStealthPayload.dylib" ./MyStealthPayload.dylib || true
+
           echo "=== FILE CHECK ==="
           file MyStealthPayload.dylib
 
